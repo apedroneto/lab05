@@ -63,7 +63,7 @@ table(down_train$situacaO)
 O método escolhido será o ROSE, que tanto cria instâncias da classe minoritária quanto diminui instâncias da classe majoritária.
 
 
-## Second question
+## Treine: um modelo de KNN, regressão logística, uma árvore de decisão e um modelo de adaboost. Tune esses modelos usando validação cruzada e controle overfitting se necessário, considerando as particularidades de cada modelo.  (20 pts.)
 ```{r}
 # usando validação cruzada 10-fold com 5 repetições
 fitControl <- trainControl(method = "repeatedcv",
@@ -104,6 +104,57 @@ adaboost <- train(x = rose_train[, names(rose_train) != "situacao"],
 
 KNN
 ```{r} 
-k <- expand.grid(k = seq(20, 100, length=81)) knn_model <- train(situacao ~ .,                     data = input,                     method = "knn",                     tuneGrid = k,                     preProc = c("center", "scale"),                     trControl = fitControl)  plot(knn_model) 
+k <- expand.grid(k = seq(20, 100, length=81))
+modelo_knn <- train(situacao ~ ., data = input, 
+                   method = "knn", 
+                   tuneGrid = k, 
+                   preProc = c("center", "scale"), 
+                   trControl = fitControl)
+modelo_knn
 ```
 
+##Reporte precision, recall e f-measure no treino e validação. Há uma grande diferença de desempenho no treino/validação? Como você avalia os resultados? Justifique sua resposta. (10 pt.)
+
+
+
+## Interprete as saídas dos modelos. Quais atributos parecem ser mais importantes de acordo com cada modelo? (20 pts.)
+
+```{r}
+
+varImp(arvore)
+varImp(adaboost)
+varImp(modelo_knn)
+varImp(reg_logistica)
+
+```
+
+No KNN os atributos com maior peso são:
+      quantidade_fornecedores,
+      recursos_de_pessoas_juridicas,
+      quantidade_doadores,
+      quantidade_despesas,
+      total_despesas.
+
+Na arvore os atributos com maior peso foram:
+      total_despesa,
+      quantidade_fornecedores,
+      total_receita.
+
+No adaboost o atributo os pessos ficaram em: total_despesa está entre um dos maiores junto com total_receita
+
+Na regressão logística os atributos com maior peso estão entre: 
+      media_receita,
+      media_despesa,
+      quantidade_doadores.
+
+##Envie seus melhores modelos à competição do Kaggle. Faça pelo menos uma submissão. Sugestões para melhorar o modelo: (20 pts.)
+## - Experimente outros modelos (e.g. SVM, RandomForests e GradientBoosting).
+## - Experimente balancear as classes,  caso estejam desbalanceadas.
+## - Experimente outras estratégias de ensembles (e.g. Stacking)
+
+```{r}
+prediction <- predict(knn_model, test_data)  
+data_out <- data.frame(ID = test_data$sequencial_candidato, Predicted = prediction) 
+data_out$ID <-as.character(data_out$ID)  
+data_out %>% write_csv(path = "arquivo.csv") 
+```
