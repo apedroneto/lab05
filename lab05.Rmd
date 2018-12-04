@@ -4,12 +4,11 @@ author: "Antonio Pedro de Abreu Neto"
 output: html_document
 ---
 
-## https://github.com/hadrizia/data-analysis-labs/blob/master/Lab03/Lab03-Hadrizia.Rmd
-## https://www.r-bloggers.com/dealing-with-unbalanced-data-in-machine-learning/
-
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(caret)
+library(ROSE)
+library(rpart)
 ```
 
 ## Lendo os dados de treino e teste
@@ -44,6 +43,26 @@ input %>% group_by(situacao) %>%
 
 Existe um desbalanceamento entre as classes eleito e nao_eleito, tendo a classe nao_eleito com muito mais instâncias que a eleito, o efeito colateral será uma tendencia a situação não eleito.
 
+```{r}
+train_data <- train_data %>% select(-recursos_de_outros_candidatos.comites, -recursos_de_partido_politico, -recursos_de_pessoas_fisicas, -recursos_de_pessoas_juridicas, -recursos_proprios)
+
+
+rose_train <- ROSE(situacao ~ ., data  = train_data)$data  
+
+table(rose_train$situacao) 
+up_train <- upSample(x = train_data[,],
+                     y = train_data$situacao)  
+up_train <- up_train %>% select(-Class)
+table(up_train$situacao) 
+down_train <- downSample(x = train_data[, -ncol(train_data)],
+                         y = train_data$situacao)
+down_train <- down_train %>% select(-Class)
+table(down_train$situacaO)  
+```
+
+O método escolhido será o ROSE, que tanto cria instâncias da classe minoritária quanto diminui instâncias da classe majoritária.
+
+
 ## Second question
 ```{r}
 # usando validação cruzada 10-fold com 5 repetições
@@ -53,14 +72,38 @@ fitControl <- trainControl(method = "repeatedcv",
                            classProbs = TRUE)
 ```
 
-```{r warning=FALSE} 
-# logistic regression
-reg_logistica <- glm(formula=situacao~., data = train_data, family=binomial)
-#https://stat.ethz.ch/pipermail/r-help/2007-March/126643.html -- response type
-final <- data.frame(actual = test_data$situacao,
-                    predict(reg_logistica, newdata = test_data, type = "response"))
-colnames(final)[colnames(final)=="predict.reg_logistica..newdata...test_data..type....response.."] <- "value"
- 
-final$predict <- ifelse(final$value > 0.5, "eleito", "nao_eleito")
-summary(reg_logistica)
+Regressão Logística
+
+```{r warning=FALSE}
+reg_logistica <- glm(formula=situacao~., data = rose_train, family=binomial)
+
+plot(reg_logistica)
 ```
+
+Árvore de decisão
+
+```{r}
+arvore <- train(
+    x = rose_train[, names(rose_train) != "situacao"],
+    y = rose_train$situacao,
+    method = "rpart",
+    trControl = fitControl,
+    control = rpart.control(cp = 0.4))
+
+plot(arvore)
+```
+
+Adaboost
+
+```{r}
+adaboost <- train(x = rose_train[, names(rose_train) != "situacao"],
+                y = rose_train$situacao,
+                method = "adaboost",
+                trControl = fitControl)
+```
+
+KNN
+```{r} 
+k <- expand.grid(k = seq(20, 100, length=81)) knn_model <- train(situacao ~ .,                     data = input,                     method = "knn",                     tuneGrid = k,                     preProc = c("center", "scale"),                     trControl = fitControl)  plot(knn_model) 
+```
+
