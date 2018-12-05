@@ -14,7 +14,7 @@ library(rpart)
 ## Lendo os dados de treino e teste
 ```{r}
 input <- read.csv("data/train.csv")
-#test_data <- read.csv("test.csv")
+data_test <- read.csv("data/test.csv")
 ```
 
 ## Removendo variáveis categóricas dos dados de treino, pois são irrelevantes para a regressão
@@ -58,9 +58,11 @@ down_train <- downSample(x = train_data[, -ncol(train_data)],
                          y = train_data$situacao)
 down_train <- down_train %>% select(-Class)
 table(down_train$situacaO)  
+
+plot(rose_train)
 ```
 
-O método escolhido será o ROSE, que tanto cria instâncias da classe minoritária quanto diminui instâncias da classe majoritária.
+Para diminuir a quantidade de instancias majoritarias escolhi ROSE, para balancear
 
 
 ## Treine: um modelo de KNN, regressão logística, uma árvore de decisão e um modelo de adaboost. Tune esses modelos usando validação cruzada e controle overfitting se necessário, considerando as particularidades de cada modelo.  (20 pts.)
@@ -115,6 +117,27 @@ modelo_knn
 
 ##Reporte precision, recall e f-measure no treino e validação. Há uma grande diferença de desempenho no treino/validação? Como você avalia os resultados? Justifique sua resposta. (10 pt.)
 
+```{r}
+test_data$prediction <- predict(adaboost, test_data)
+```
+
+```{r}
+EN <- test_data %>% filter(situacao == "eleito", prediction == "nao_eleito" ) %>% nrow()
+EE <- test_data %>% filter(situacao == "eleito", prediction == "eleito") %>% nrow()
+NE <- test_data %>% filter(situacao == "nao_eleito" , prediction == "eleito") %>% nrow() 
+```
+
+## precision, recall e f-measure.
+```{r}
+precision <- EE / (EE + NE)
+recall <- EE / (EE + EN)
+f_measure <- 2 * (precision * recall) / (precision + recall)
+precision
+recall
+f_measure
+```
+
+Esse modelo teve apenas a precision alto, o que torna um modelo nao tão bom pois o recall deu muito baixo provavelmente muitos dos objetos q deveriam ser selecionados nao foram selecionados.
 
 
 ## Interprete as saídas dos modelos. Quais atributos parecem ser mais importantes de acordo com cada modelo? (20 pts.)
@@ -153,8 +176,8 @@ Na regressão logística os atributos com maior peso estão entre:
 ## - Experimente outras estratégias de ensembles (e.g. Stacking)
 
 ```{r}
-prediction <- predict(knn_model, test_data)  
-data_out <- data.frame(ID = test_data$sequencial_candidato, Predicted = prediction) 
+prediction <- predict(knn_model, data_test)  
+data_out <- data.frame(ID = data_test$sequencial_candidato, Predicted = prediction) 
 data_out$ID <-as.character(data_out$ID)  
 data_out %>% write_csv(path = "arquivo.csv") 
 ```
